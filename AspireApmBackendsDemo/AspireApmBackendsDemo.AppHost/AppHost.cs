@@ -1,6 +1,6 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var backend = builder.Configuration["OBSERVABILITY_BACKEND"] ?? "elastic";
+var backend = builder.Configuration["OBSERVABILITY_BACKEND"] ?? "grafana-full";
 
 var appHostDir = Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? throw new InvalidOperationException("Could not determine app host directory");
 var solutionDir = Path.GetFullPath(Path.Combine(appHostDir, "..", "..", "..", ".."));
