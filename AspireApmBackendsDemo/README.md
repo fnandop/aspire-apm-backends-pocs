@@ -155,16 +155,16 @@ curl http://localhost:8080/random
 |---------|--------|-------|
 | Elastic | http://localhost:5601 | Kibana → Observability → APM → Services |
 | Application Insights | Azure Portal | Application Insights → Transaction Search / Application Map / Failures |
-| Jaeger | http://localhost:16686 | Search traces by service `api-service` |
+| Jaeger | http://localhost:16686 | Search traces by service `api-service`; Jaeger does not store application logs or metrics |
 | Tempo | http://localhost:3000 | Grafana → Explore → Tempo datasource |
-| Grafana Full | http://localhost:3000 | Dashboards / Explore with Tempo, Prometheus, and Loki |
+| Grafana Full | http://localhost:3000 | Explore Tempo with service `api-service`; Explore Loki with `{service_name="api-service"}` |
 
 ## Backend Comparison
 
 | Feature | Elastic APM | Application Insights | Jaeger | Grafana Tempo | Full Grafana Stack |
 |---------|-------------|---------------------|--------|---------------|---------------------|
 | **Traces** | Yes | Yes | Yes | Yes | Yes |
-| **Metrics** | Yes | Yes | Limited | No | Yes (Prometheus) |
+| **Metrics** | Yes | Yes | No | No | Yes (Prometheus) |
 | **Logs** | Yes (ELK) | Yes | No | No | Yes (Loki) |
 | **UI** | Kibana | Azure Portal | Jaeger UI | Grafana | Grafana |
 | **Hosting** | Self-hosted | Azure-managed | Self-hosted | Self-hosted | Self-hosted |
@@ -210,8 +210,8 @@ The Application Insights exporter lives in the Collector because:
 
 ### Why Jaeger and Tempo Are Trace-Focused
 
-Jaeger and Tempo are primarily trace backends:
-- Jaeger has limited metric/log support
+Jaeger and Tempo are trace backends in this demo:
+- Jaeger receives traces only; application logs and metrics are not exported in `jaeger` mode
 - Tempo is designed for traces; metrics come from Prometheus
 - For full observability, the Grafana full stack is recommended
 
@@ -275,7 +275,7 @@ Jaeger and Tempo are primarily trace backends:
 | jaeger-ui | 16686 | Jaeger UI |
 | jaeger-otlp | 4317 | Jaeger OTLP |
 | tempo | 3100 | Tempo HTTP |
-| tempo-otlp | 4317 | Tempo OTLP |
+| tempo-otlp | 4317 | Tempo OTLP inside the Docker network; not published to the host |
 | prometheus | 9090 | Prometheus |
 | loki | 3100 | Loki |
 | grafana | 3000 | Grafana |

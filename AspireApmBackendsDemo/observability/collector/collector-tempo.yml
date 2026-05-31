@@ -12,11 +12,6 @@ processors:
     send_batch_size: 8192
 
 exporters:
-  debug:
-    verbosity: detailed
-    sampling_initial: 5
-    sampling_thereafter: 200
-
   otlp/tempo:
     endpoint: tempo:4317
     tls:
@@ -27,12 +22,4 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug, otlp/tempo]
-    metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [debug]
-    logs:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [debug]
+      exporters: [otlp/tempo]

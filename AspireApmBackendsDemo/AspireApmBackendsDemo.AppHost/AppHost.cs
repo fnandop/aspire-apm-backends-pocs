@@ -71,19 +71,21 @@ if (backend == "elastic")
 
 if (backend == "jaeger")
 {
-    builder.AddContainer("jaeger", "jaegertracing/all-in-one:latest")
+    var jaeger = builder.AddContainer("jaeger", "jaegertracing/all-in-one:latest")
         .WithHttpEndpoint(16686, name: "jaeger-ui", isProxied: false)
-        .WithHttpEndpoint(4317, name: "otlp-grpc", isProxied: false)
         .WithHttpEndpoint(14268, name: "jaeger-thrift-http", isProxied: false)
         .WithEnvironment("COLLECTOR_OTLP_ENABLED", "true");
+
+    otelCollector.WaitFor(jaeger);
+    apiService.WaitFor(jaeger);
 }
 
 if (backend == "tempo")
 {
     var tempo = builder.AddContainer("tempo", "grafana/tempo:latest")
         .WithHttpEndpoint(3100, name: "tempo-http", isProxied: false)
-        .WithHttpEndpoint(4317, name: "otlp-grpc", isProxied: false)
-        .WithBindMount(Path.Combine(observabilityDir, "grafana", "tempo.yml"), "/etc/tempo.yaml", isReadOnly: true);
+        .WithBindMount(Path.Combine(observabilityDir, "grafana", "tempo.yml"), "/etc/tempo.yaml", isReadOnly: true)
+        .WithArgs("-config.file=/etc/tempo.yaml");
 
     builder.AddContainer("grafana", "grafana/grafana:latest")
         .WithHttpEndpoint(3000, isProxied: false)
@@ -92,6 +94,7 @@ if (backend == "tempo")
         .WithEnvironment("GF_AUTH_ANONYMOUS_ORG_ROLE", "Admin")
         .WithEnvironment("GF_AUTH_DISABLE_LOGIN_FORM", "true");
 
+    otelCollector.WaitFor(tempo);
     apiService.WaitFor(tempo);
 }
 
@@ -99,16 +102,17 @@ if (backend == "grafana-full")
 {
     var tempo = builder.AddContainer("tempo", "grafana/tempo:latest")
         .WithHttpEndpoint(3100, name: "tempo-http", isProxied: false)
-        .WithHttpEndpoint(4317, name: "otlp-grpc", isProxied: false)
-        .WithBindMount(Path.Combine(observabilityDir, "grafana", "tempo.yml"), "/etc/tempo.yaml", isReadOnly: true);
+        .WithBindMount(Path.Combine(observabilityDir, "grafana", "tempo.yml"), "/etc/tempo.yaml", isReadOnly: true)
+        .WithArgs("-config.file=/etc/tempo.yaml");
 
     builder.AddContainer("prometheus", "prom/prometheus:latest")
         .WithHttpEndpoint(9090, isProxied: false)
         .WithBindMount(Path.Combine(observabilityDir, "grafana", "prometheus.yml"), "/etc/prometheus/prometheus.yml", isReadOnly: true);
 
     builder.AddContainer("loki", "grafana/loki:latest")
-        .WithHttpEndpoint(3100, isProxied: false)
-        .WithBindMount(Path.Combine(observabilityDir, "grafana", "loki.yml"), "/etc/loki/local-config.yaml", isReadOnly: true);
+        .WithHttpEndpoint(3101, targetPort: 3100, isProxied: false)
+        .WithBindMount(Path.Combine(observabilityDir, "grafana", "loki.yml"), "/etc/loki/local-config.yaml", isReadOnly: true)
+        .WithArgs("-config.file=/etc/loki/local-config.yaml");
 
     builder.AddContainer("grafana", "grafana/grafana:latest")
         .WithHttpEndpoint(3000, isProxied: false)
@@ -117,6 +121,7 @@ if (backend == "grafana-full")
         .WithEnvironment("GF_AUTH_ANONYMOUS_ORG_ROLE", "Admin")
         .WithEnvironment("GF_AUTH_DISABLE_LOGIN_FORM", "true");
 
+    otelCollector.WaitFor(tempo);
     apiService.WaitFor(tempo);
 }
 

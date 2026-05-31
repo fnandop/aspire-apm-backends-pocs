@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -40,10 +41,18 @@ public static partial class Extensions
 
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        var backend = Environment.GetEnvironmentVariable("OBSERVABILITY_BACKEND");
+        var isTraceOnlyBackend = backend is "jaeger" or "tempo";
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;
             logging.IncludeScopes = true;
+
+            if (!isTraceOnlyBackend)
+            {
+                logging.AddOtlpExporter();
+            }
         });
 
         builder.Services.AddOpenTelemetry()
@@ -62,6 +71,11 @@ public static partial class Extensions
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
+
+                if (!isTraceOnlyBackend)
+                {
+                    metrics.AddOtlpExporter();
+                }
             })
             .WithTracing(tracing =>
             {
@@ -72,8 +86,9 @@ public static partial class Extensions
                             && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
                     )
                     .AddHttpClientInstrumentation();
-            })
-            .UseOtlpExporter();
+
+                tracing.AddOtlpExporter();
+            });
 
         return builder;
     }
