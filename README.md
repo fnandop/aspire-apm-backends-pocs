@@ -1,279 +1,291 @@
 # .NET Aspire APM Backend Comparison Demo
 
-A proof-of-concept demonstrating how to test and compare multiple APM/observability backends using OpenTelemetry Collector with .NET Aspire.
+This proof-of-concept demonstrates how to compare different APM/observability backends using OpenTelemetry Collector with a single .NET Aspire API service.
 
-The application code **stays backend-neutral** - all telemetry is exported via OTLP to the OpenTelemetry Collector, which then forwards data to the selected APM backend.
+## Purpose
+
+Compare different APM/observability solutions with the same .NET API service:
+- **Switching backends** requires changing only Aspire infrastructure and Collector configuration
+- **No application code changes** required when switching backends
+- **Backend-neutral** API that only knows about OpenTelemetry and the Collector
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph ".NET Services"
-        A[API Service]
-    end
+### Core Flow
 
-    subgraph "OpenTelemetry Collector"
-        OTLP[OTLP Receiver<br/>:4317 :4318]
-    end
-
-    subgraph "APM Backends"
-        E[Elastic APM]
-        AI[Azure App Insights]
-        J[Jaeger]
-        T[Tempo]
-        M[Multi Mode]
-    end
-
-    A -->|OTLP| OTLP
-
-    OTLP -->|Collector Config| E
-    OTLP -->|Collector Config| AI
-    OTLP -->|Collector Config| J
-    OTLP -->|Collector Config| T
-    OTLP -->|Collector Config| M
-
-    style OTLP fill:#4A90D9,color:#fff
-    style A fill:#68A063,color:#fff
+```
+.NET API
+  → OTLP exporter
+  → OpenTelemetry Collector
+  → selected backend
 ```
 
-## Exporter vs Collector
+### 1. Elastic APM / ELK Stack
 
-### Application Exporter (This Demo)
-- The .NET application **only exports via OTLP** using `OpenTelemetry.Exporter.OpenTelemetryProtocol`
-- **No backend-specific SDKs** are used (no Elastic APM SDK, no Application Insights SDK, etc.)
-- The exporter sends telemetry to the OpenTelemetry Collector's OTLP receiver
+```mermaid
+graph LR
+    A[.NET API] --> B[OTLP]
+    B --> C[OpenTelemetry Collector]
+    C --> D[Elastic APM Server]
+    D --> E[Elasticsearch]
+    E --> F[Kibana]
+```
 
-### Collector
-- Receives OTLP from the application
-- Uses **collector configuration** to route data to the selected APM backend
-- Enables **backend switching without changing application code**
-- Only the collector config and infrastructure change
+### 2. Azure Application Insights
 
-## Running the Demo
+```mermaid
+graph LR
+    A[.NET API] --> B[OTLP]
+    B --> C[OpenTelemetry Collector]
+    C --> D[Azure Monitor<br/>Application Insights]
+```
+
+### 3. Jaeger
+
+```mermaid
+graph LR
+    A[.NET API] --> B[OTLP]
+    B --> C[OpenTelemetry Collector]
+    C --> D[Jaeger]
+    D --> E[Jaeger UI]
+```
+
+### 4. Grafana Tempo
+
+```mermaid
+graph LR
+    A[.NET API] --> B[OTLP]
+    B --> C[OpenTelemetry Collector]
+    C --> D[Tempo]
+    D --> E[Grafana]
+```
+
+### 5. Full Grafana Stack
+
+```mermaid
+graph LR
+    A[.NET API] --> B[OTLP]
+    B --> C[OpenTelemetry Collector]
+    C --> D[Tempo]
+    C --> E[Prometheus]
+    C --> F[Loki]
+    D --> G[Grafana]
+    E --> G
+    F --> G
+```
+
+## How to Run
 
 ### Prerequisites
+
+- Docker Desktop (with Kubernetes support)
 - .NET 10 SDK
-- Docker Desktop (for containerized backends)
-- For App Insights mode: `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable
+- Aspire workload installed (`dotnet workload install aspire`)
 
-### Supported Backends
+### Running with Different Backends
 
-Set the `OBSERVABILITY_BACKEND` environment variable to switch backends:
+Set the `OBSERVABILITY_BACKEND` environment variable before running:
 
 ```bash
-OBSERVABILITY_BACKEND=elastic    # Elastic APM
-OBSERVABILITY_BACKEND=appinsights # Azure Application Insights
-OBSERVABILITY_BACKEND=jaeger      # Jaeger
-OBSERVABILITY_BACKEND=tempo       # Grafana Tempo
-OBSERVABILITY_BACKEND=multi       # All backends simultaneously
-```
-
-### Running Each Mode
-
-#### Elastic APM
-```bash
-cd AspireApmBackendsDemo
+# Elastic APM / ELK Stack
+$env:OBSERVABILITY_BACKEND="elastic"
 dotnet run --project AspireApmBackendsDemo.AppHost
-# Access Kibana: http://localhost:5601
-# Default credentials: elastic / changeme (or disabled for local dev)
-```
 
-#### Azure Application Insights
-```bash
-# Set your connection string first
-export APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=xxx;IngestionEndpoint=https://xxxx.in.applicationinsights.azure.com/"
-
+# Azure Application Insights
+$env:OBSERVABILITY_BACKEND="appinsights"
+$env:APPLICATIONINSIGHTS_CONNECTION_STRING="your-connection-string"
 dotnet run --project AspireApmBackendsDemo.AppHost
-# View in Azure Portal -> Application Insights -> Transaction Search
-```
 
-#### Jaeger
-```bash
-OBSERVABILITY_BACKEND=jaeger dotnet run --project AspireApmBackendsDemo.AppHost
-# Access Jaeger UI: http://localhost:16686
-```
-
-#### Grafana Tempo
-```bash
-OBSERVABILITY_BACKEND=tempo dotnet run --project AspireApmBackendsDemo.AppHost
-# Access Grafana: http://localhost:3000 (admin / admin)
-# Default datasources already configured
-```
-
-#### Multi-Backend Mode
-```bash
+# Jaeger
+$env:OBSERVABILITY_BACKEND="jaeger"
 dotnet run --project AspireApmBackendsDemo.AppHost
-# Start all backends to compare telemetry side-by-side
+
+# Grafana Tempo
+$env:OBSERVABILITY_BACKEND="tempo"
+dotnet run --project AspireApmBackendsDemo.AppHost
+
+# Full Grafana Stack (Tempo + Prometheus + Loki)
+$env:OBSERVABILITY_BACKEND="grafana-full"
+dotnet run --project AspireApmBackendsDemo.AppHost
 ```
 
-### API Service Endpoints
+## Application Insights Setup
 
-Test the API service at `http://localhost:8080`:
-
-| Endpoint | Description |
-|----------|-------------|
-| GET / | Simple health check |
-| GET /health | Returns OK |
-| GET /error | Throws exception (test error capture) |
-| GET /slow | 2-second delay (test latency traces) |
-| GET /outgoing | HTTP call to httpbin.org (test outgoing spans) |
-| GET /logs | Logs at Info/Warn/Error levels |
-| GET /custom-span | Creates custom Activity with tags/events |
-| GET /random | Randomly returns success, slow, or error |
-
-### Testing with curl
+When using `appinsights` backend, you must set the `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable:
 
 ```bash
-# Basic health
+$env:APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=your-key;IngestionEndpoint=https://your-endpoint.in.applicationinsights.azure.com/"
+```
+
+Do not hardcode this value. Use environment variables or Azure Key Vault in production.
+
+## Test Commands
+
+After starting the application, use curl to test each endpoint:
+
+```bash
+# Root endpoint - shows selected backend
 curl http://localhost:8080/
 
 # Health check
 curl http://localhost:8080/health
 
-# Test error capture
+# Error endpoint - throws exception for APM testing
 curl http://localhost:8080/error
 
-# Test latency tracing
+# Slow response - 2 second delay
 curl http://localhost:8080/slow
 
-# Test outgoing HTTP spans
+# Outgoing HTTP call - tests dependency tracing
 curl http://localhost:8080/outgoing
 
-# Test logging
+# Log levels - generates info, warning, and error logs
 curl http://localhost:8080/logs
 
-# Test custom spans
+# Custom span - creates custom Activity/span with tags and events
 curl http://localhost:8080/custom-span
 
-# Test random behavior
+# Random - randomly returns success, slow response, or error
 curl http://localhost:8080/random
 ```
 
 ## Where to View Telemetry
 
-### Kibana (Elastic APM)
-1. Navigate to http://localhost:5601
-2. Go to **Observability** -> **APM** -> **Services**
-3. Select `api-service` to see traces, errors, and metrics
-
-### Azure Application Insights
-1. Navigate to your Application Insights resource in Azure Portal
-2. Use **Transaction Search** to find traces
-3. Use **Application Map** for service dependencies
-4. Use **Live Metrics** for real-time monitoring
-
-### Jaeger UI
-1. Navigate to http://localhost:16686
-2. Select `api-service` from the service dropdown
-3. Search for traces and analyze spans
-
-### Grafana Tempo
-1. Navigate to http://localhost:3000
-2. Go to **Explore** -> Select **Tempo** datasource
-3. Search for traces by service name or other attributes
+| Backend | UI URL | Notes |
+|---------|--------|-------|
+| Elastic | http://localhost:5601 | Kibana → Observability → APM → Services |
+| Application Insights | Azure Portal | Application Insights → Transaction Search / Application Map / Failures |
+| Jaeger | http://localhost:16686 | Search traces by service `api-service`; Jaeger does not store application logs or metrics |
+| Tempo | http://localhost:3000 | Grafana → Explore → Tempo datasource |
+| Grafana Full | http://localhost:3000 | Explore Tempo with service `api-service`; Explore Loki with `{service_name="api-service"}` |
 
 ## Backend Comparison
 
-| Backend | Traces | Metrics | Logs | Distributed Tracing | Error Tracking | APM Features |
-|---------|--------|---------|------|---------------------|----------------|--------------|
-| **Elastic APM** | ✅ | ✅ | ✅ | ✅ | ✅ | Service maps, code profiling, slow queries |
-| **Azure App Insights** | ✅ | ✅ | ✅ | ✅ | ✅ | Live metrics, Application Map, Profiler |
-| **Jaeger** | ✅ | ❌ | ❌ | ✅ | ❌ | Basic trace visualization, span comparison |
-| **Tempo** | ✅ | ⚠️ | ⚠️ | ✅ | ❌ | Best with Grafana, Prometheus, Loki |
+| Feature | Elastic APM | Application Insights | Jaeger | Grafana Tempo | Full Grafana Stack |
+|---------|-------------|---------------------|--------|---------------|---------------------|
+| **Traces** | Yes | Yes | Yes | Yes | Yes |
+| **Metrics** | Yes | Yes | No | No | Yes (Prometheus) |
+| **Logs** | Yes (ELK) | Yes | No | No | Yes (Loki) |
+| **UI** | Kibana | Azure Portal | Jaeger UI | Grafana | Grafana |
+| **Hosting** | Self-hosted | Azure-managed | Self-hosted | Self-hosted | Self-hosted |
+| **Best For** | Full observability with Elasticsearch | Teams already in Azure | Simple trace visualization | Trace-focused teams | Complete observability stack |
+| **Complexity** | Medium-High | Low | Low | Medium | High |
 
-**Note:** Jaeger and Tempo are primarily tracing-focused. For full observability (metrics, logs), pair them with Prometheus and Loki, or use Elastic APM / Application Insights.
+## Design Decisions
 
-## Environment Variables
+### Why OpenTelemetry Collector?
 
-### Application Service (set automatically by AppHost)
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `OTEL_SERVICE_NAME` | `api-service` | Service identifier |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4317` | Collector endpoint |
-| `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` | Protocol to use |
+The Collector provides a clear separation between application code and backend configuration:
+- Applications only need to know about OTLP
+- Backend-specific exporters live in the Collector
+- Switching backends doesn't require recompiling the application
 
-### Collector (set by AppHost based on backend)
-| Variable | Description |
-|----------|-------------|
-| `OBSERVABILITY_BACKEND` | Backend mode: `elastic`, `appinsights`, `jaeger`, `tempo`, `multi` |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Azure App Insights connection string (for appinsights/multi modes) |
+### Why Backend-Neutral API?
 
-### Collector Configuration Files
+The same API code works with all backends because:
+- It only uses OpenTelemetry SDK and OTLP exporter
+- No backend-specific packages (Elastic APM .NET Agent, Application Insights SDK, Jaeger client, etc.)
+- Configuration happens at deployment/infrastructure level
 
-| File | Description |
-|------|-------------|
-| `otel/collector-elastic.yml` | Routes telemetry to Elastic APM Server |
-| `otel/collector-appinsights.yml` | Routes telemetry to Azure Application Insights |
-| `otel/collector-jaeger.yml` | Routes telemetry to Jaeger (traces only) |
-| `otel/collector-tempo.yml` | Routes telemetry to Grafana Tempo (traces only) |
-| `otel/collector-multi.yml` | Routes telemetry to multiple backends simultaneously |
+### Why Not Logstash?
 
-## Infrastructure Configuration
+Logstash is not needed because:
+- OpenTelemetry Collector handles log export directly
+- The Collector has native OTLP support for logs
+- Adding Logstash would introduce another service and complexity
 
-| File | Description |
-|------|-------------|
-| `otel/apm-server.yml` | Elastic APM Server configuration |
-| `otel/tempo.yml` | Grafana Tempo configuration |
-| `otel/grafana-datasources.yml` | Auto-provisions Tempo and Prometheus datasources in Grafana |
-| `otel/prometheus.yml` | Prometheus scrape configuration |
+### Why Elastic APM Server?
 
-## Container Ports
+For Elastic APM:
+- The APM Server is the native ingestion point for Elastic's APM format
+- It converts OTLP data to Elastic's format for Elasticsearch
+- Kibana's APM UI expects data in this format
 
-| Service | Port | Description |
-|---------|------|-------------|
-| API Service | 8080 | REST API |
-| OTel Collector (gRPC) | 4317 | OTLP receiver |
-| OTel Collector (HTTP) | 4318 | OTLP receiver |
-| Elasticsearch | 9200 | Elastic search |
-| Kibana | 5601 | Elastic observability UI |
-| APM Server | 8200 | Elastic APM Server |
-| Jaeger UI | 16686 | Jaeger web UI |
-| Grafana | 3000 | Grafana dashboard |
-| Tempo | 3100 | Tempo query endpoint |
+### Why Collector-Based Application Insights Exporter?
 
-## Key Benefits of This Architecture
+The Application Insights exporter lives in the Collector because:
+- It keeps the API service backend-neutral
+- The Collector uses the Azure Monitor exporter
+- API code only knows about OTLP
 
-1. **Backend-neutral application**: The API service has no dependency on any APM backend SDK
-2. **Seamless backend switching**: Change `OBSERVABILITY_BACKEND` to switch observability providers
-3. **No code changes**: Application code stays the same; only infrastructure and collector config change
-4. **Multi-backend comparison**: Use `multi` mode to send telemetry to multiple backends simultaneously
-5. **Standardized telemetry**: All telemetry is OTLP, making it vendor-neutral
+### Why Jaeger and Tempo Are Trace-Focused
+
+Jaeger and Tempo are trace backends in this demo:
+- Jaeger receives traces only; application logs and metrics are not exported in `jaeger` mode
+- Tempo is designed for traces; metrics come from Prometheus
+- For full observability, the Grafana full stack is recommended
+
+### Trade-offs of Using Collector
+
+**Advantages:**
+- More flexible backend selection
+- Centralized backend configuration
+- Easier backend switching
+- Single point for sampling and processing
+
+**Disadvantages:**
+- One extra running service (the Collector)
+- Additional network hop
+- Collector configuration complexity
 
 ## Project Structure
 
 ```
-AspireApmBackendsDemo/
-├── AspireApmBackendsDemo.AppHost/     # .NET Aspire orchestration
-├── AspireApmBackendsDemo.ApiService/  # ASP.NET Core Minimal API
-├── AspireApmBackendsDemo.ServiceDefaults/  # Shared configuration
-├── AspireApmBackendsDemo.Web/         # (Not used in this demo)
-├── otel/                              # OTel Collector and infrastructure configs
-│   ├── collector-elastic.yml
-│   ├── collector-appinsights.yml
-│   ├── collector-jaeger.yml
-│   ├── collector-tempo.yml
-│   ├── collector-multi.yml
-│   ├── apm-server.yml
-│   ├── tempo.yml
-│   ├── prometheus.yml
-│   └── grafana-datasources.yml
-└── README.md
+/AspireApmBackendsDemo
+  /AspireApmBackendsDemo.AppHost      # Aspire orchestration
+  /AspireApmBackendsDemo.ApiService   # .NET Minimal API
+  /AspireApmBackendsDemo.ServiceDefaults # Shared configuration
+  /observability
+    /collector                         # OTel Collector configs
+      collector-elastic.yml
+      collector-appinsights.yml
+      collector-jaeger.yml
+      collector-tempo.yml
+      collector-grafana-full.yml
+    /elastic
+      apm-server.yml
+    /grafana
+      tempo.yml
+      prometheus.yml
+      loki.yml
+      grafana-datasources.yml
+  README.md
 ```
 
-## Troubleshooting
+## Environment Variables
 
-### Collector not receiving data
-- Check that `OTEL_EXPORTER_OTLP_ENDPOINT` is set to `http://otel-collector:4317`
-- Verify the collector container is running and ports are exposed
-- Check collector logs for any configuration errors
+| Variable | Description | Used By |
+|----------|-------------|---------|
+| `OBSERVABILITY_BACKEND` | Backend selection (elastic, appinsights, jaeger, tempo, grafana-full) | AppHost, API Service |
+| `OTEL_SERVICE_NAME` | OpenTelemetry service name | API Service, Collector |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint for export | API Service |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | OTLP protocol (grpc/http) | API Service |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Azure App Insights connection string | Collector (appinsights backend only) |
 
-### No traces in APM backend
-- Verify the correct collector config is mounted
-- For Elastic: ensure Elasticsearch and APM Server are running
-- For App Insights: verify `APPLICATIONINSIGHTS_CONNECTION_STRING` is set
-- Check the debug exporter in collector config to see if data is being received
+## Ports
 
-### Containers not starting
-- Ensure Docker Desktop is running
-- Check `docker ps` to see running containers
-- Check Aspire dashboard for container status
+| Service | Port | Description |
+|---------|------|-------------|
+| api-service | 8080 | ASP.NET Core API |
+| otel-collector | 4317 | OTLP gRPC |
+| otel-collector | 4318 | OTLP HTTP |
+| elasticsearch | 9200 | Elasticsearch |
+| kibana | 5601 | Kibana |
+| apm-server | 8200 | Elastic APM Server |
+| jaeger-ui | 16686 | Jaeger UI |
+| jaeger-otlp | 4317 | Jaeger OTLP |
+| tempo | 3100 | Tempo HTTP |
+| tempo-otlp | 4317 | Tempo OTLP inside the Docker network; not published to the host |
+| prometheus | 9090 | Prometheus |
+| loki | 3100 | Loki |
+| grafana | 3000 | Grafana |
+
+## Cleanup
+
+To stop all containers:
+
+```bash
+docker ps --filter "name=otel-collector" --filter "name=elasticsearch" --filter "name=kibana" --filter "name=apm-server" --filter "name=jaeger" --filter "name=tempo" --filter "name=prometheus" --filter "name=loki" --filter "name=grafana" -q | xargs docker stop
+```
+
+Or simply stop the Aspire orchestration with Ctrl+C.
