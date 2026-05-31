@@ -1,0 +1,30 @@
+version: 1
+
+storage:
+  trace:
+    backend: tempo
+
+    tempo:
+      endpoint: tempo:4317
+      # For development, using simple otlp gRPC
+      # In production, would use tempo:3200 with user/password
+
+distributor:
+  receivers:
+    jaeger:
+      protocols:
+        thrift_http:
+        grpc:
+        thrift_binary:
+        thrift_compact:
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 1h
+
+query_server:
+  query_frontend:
+    address: tempo:3200

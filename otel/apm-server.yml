@@ -1,0 +1,14 @@
+apm-server:
+  host: 0.0.0.0:8200
+  mode: server
+
+output:
+  elasticsearch:
+    hosts:
+      - http://elasticsearch:9200
+
+ssl:
+  enabled: false
+
+monitoring:
+  enabled: false
