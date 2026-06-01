@@ -24,54 +24,111 @@ Compare different APM/observability solutions with the same .NET API service:
 
 ```mermaid
 graph LR
-    A[.NET API] --> B[OTLP]
-    B --> C[OpenTelemetry Collector]
-    C --> D[Elastic APM Server]
-    D --> E[Elasticsearch]
-    E --> F[Kibana]
+    A["⚙️ .NET API"] --> B["📦 OTLP"]
+    B --> C["🔭 OpenTelemetry Collector"]
+    C --> D["🟣 Elastic APM Server"]
+    D --> E["🔎 Elasticsearch"]
+    E --> F["📊 Kibana"]
+
+    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
+    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef elastic fill:#00BFB3,stroke:#00756E,color:#061D1B
+    classDef ui fill:#F04E98,stroke:#A91F62,color:#fff
+    class A app
+    class B protocol
+    class C collector
+    class D,E elastic
+    class F ui
 ```
 
 ### 2. Azure Application Insights
 
 ```mermaid
 graph LR
-    A[.NET API] --> B[OTLP]
-    B --> C[OpenTelemetry Collector]
-    C --> D[Azure Monitor<br/>Application Insights]
+    A["⚙️ .NET API"] --> B["📦 OTLP"]
+    B --> C["🔭 OpenTelemetry Collector"]
+    C --> D["☁️ Azure Monitor<br/>Application Insights"]
+
+    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
+    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef azure fill:#0078D4,stroke:#004E8A,color:#fff
+    class A app
+    class B protocol
+    class C collector
+    class D azure
 ```
 
 ### 3. Jaeger
 
 ```mermaid
 graph LR
-    A[.NET API] --> B[OTLP]
-    B --> C[OpenTelemetry Collector]
-    C --> D[Jaeger]
-    D --> E[Jaeger UI]
+    A["⚙️ .NET API"] --> B["📦 OTLP"]
+    B --> C["🔭 OpenTelemetry Collector"]
+    C --> D["🧭 Jaeger"]
+    D --> E["🕵️ Jaeger UI"]
+
+    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
+    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef jaeger fill:#66C2A5,stroke:#2F7D69,color:#10231E
+    classDef ui fill:#8E44AD,stroke:#5E2A78,color:#fff
+    class A app
+    class B protocol
+    class C collector
+    class D jaeger
+    class E ui
 ```
 
 ### 4. Grafana Tempo
 
 ```mermaid
 graph LR
-    A[.NET API] --> B[OTLP]
-    B --> C[OpenTelemetry Collector]
-    C --> D[Tempo]
-    D --> E[Grafana]
+    A["⚙️ .NET API"] --> B["📦 OTLP"]
+    B --> C["🔭 OpenTelemetry Collector"]
+    C --> D["⏱️ Tempo"]
+    D --> E["📈 Grafana"]
+
+    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
+    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef tempo fill:#7B61FF,stroke:#443399,color:#fff
+    classDef grafana fill:#F46800,stroke:#9B3F00,color:#fff
+    class A app
+    class B protocol
+    class C collector
+    class D tempo
+    class E grafana
 ```
 
 ### 5. Full Grafana Stack
 
 ```mermaid
 graph LR
-    A[.NET API] --> B[OTLP]
-    B --> C[OpenTelemetry Collector]
-    C --> D[Tempo]
-    C --> E[Prometheus]
-    C --> F[Loki]
-    D --> G[Grafana]
+    A["⚙️ .NET API"] --> B["📦 OTLP"]
+    B --> C["🔭 OpenTelemetry Collector"]
+    C --> D["⏱️ Tempo<br/>traces"]
+    C --> E["🔥 Prometheus<br/>metrics"]
+    C --> F["🪵 Loki<br/>logs"]
+    D --> G["📈 Grafana"]
     E --> G
     F --> G
+
+    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
+    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef tempo fill:#7B61FF,stroke:#443399,color:#fff
+    classDef prometheus fill:#E6522C,stroke:#9C2E16,color:#fff
+    classDef loki fill:#2ECC71,stroke:#1F8E4D,color:#102015
+    classDef grafana fill:#F46800,stroke:#9B3F00,color:#fff
+    class A app
+    class B protocol
+    class C collector
+    class D tempo
+    class E prometheus
+    class F loki
+    class G grafana
 ```
 
 ## How to Run
