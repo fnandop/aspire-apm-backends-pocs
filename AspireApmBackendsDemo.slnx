@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="src/AspireApmBackendsDemo.ApiService/AspireApmBackendsDemo.ApiService.csproj" />
+  <Project Path="src/AspireApmBackendsDemo.AppHost/AspireApmBackendsDemo.AppHost.csproj" />
+  <Project Path="src/AspireApmBackendsDemo.ServiceDefaults/AspireApmBackendsDemo.ServiceDefaults.csproj" />
+  <Project Path="src/AspireApmBackendsDemo.Web/AspireApmBackendsDemo.Web.csproj" />
+</Solution>

@@ -10,6 +10,7 @@ var collectorConfigPath = backend switch
 {
     "elastic" => Path.Combine(observabilityDir, "collector", "collector-elastic.yml"),
     "appinsights" => Path.Combine(observabilityDir, "collector", "collector-appinsights.yml"),
+    "datadog" => Path.Combine(observabilityDir, "collector", "collector-datadog.yml"),
     "jaeger" => Path.Combine(observabilityDir, "collector", "collector-jaeger.yml"),
     "tempo" => Path.Combine(observabilityDir, "collector", "collector-tempo.yml"),
     "grafana-full" => Path.Combine(observabilityDir, "collector", "collector-grafana-full.yml"),
@@ -27,6 +28,19 @@ var otelCollector = builder.AddContainer("otel-collector", "otel/opentelemetry-c
 if (backend == "appinsights")
 {
     otelCollector.WithEnvironment("APPLICATIONINSIGHTS_CONNECTION_STRING", builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"] ?? "");
+}
+
+if (backend == "datadog")
+{
+    var datadogApiKey = builder.Configuration["DD_API_KEY"] ?? builder.Configuration["DATADOG_API_KEY"];
+    if (string.IsNullOrWhiteSpace(datadogApiKey))
+    {
+        throw new InvalidOperationException("Datadog backend requires DD_API_KEY or DATADOG_API_KEY to be set.");
+    }
+
+    otelCollector
+        .WithEnvironment("DD_API_KEY", datadogApiKey)
+        .WithEnvironment("DD_SITE", builder.Configuration["DD_SITE"] ?? "datadoghq.com");
 }
 
 var apiService = builder.AddProject<Projects.AspireApmBackendsDemo_ApiService>("api-service")

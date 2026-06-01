@@ -60,7 +60,30 @@ graph LR
     class D azure
 ```
 
-### 3. Jaeger
+### 3. Datadog APM
+
+```mermaid
+graph LR
+    A["⚙️ .NET API"] --> B["📦 OTLP"]
+    B --> C["🔭 OpenTelemetry Collector"]
+    C --> D["🐶 Datadog Exporter"]
+    C --> E["📈 Datadog Connector<br/>APM stats"]
+    D --> F["☁️ Datadog APM"]
+    E --> F
+
+    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
+    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef datadog fill:#632CA6,stroke:#3D1D66,color:#fff
+    classDef cloud fill:#00A3A3,stroke:#006666,color:#fff
+    class A app
+    class B protocol
+    class C collector
+    class D,E datadog
+    class F cloud
+```
+
+### 4. Jaeger
 
 ```mermaid
 graph LR
@@ -81,7 +104,7 @@ graph LR
     class E ui
 ```
 
-### 4. Grafana Tempo
+### 5. Grafana Tempo
 
 ```mermaid
 graph LR
@@ -102,7 +125,7 @@ graph LR
     class E grafana
 ```
 
-### 5. Full Grafana Stack
+### 6. Full Grafana Stack
 
 ```mermaid
 graph LR
@@ -146,24 +169,30 @@ Set the `OBSERVABILITY_BACKEND` environment variable before running:
 ```bash
 # Elastic APM / ELK Stack
 $env:OBSERVABILITY_BACKEND="elastic"
-dotnet run --project AspireApmBackendsDemo.AppHost
+dotnet run --project src/AspireApmBackendsDemo.AppHost
 
 # Azure Application Insights
 $env:OBSERVABILITY_BACKEND="appinsights"
 $env:APPLICATIONINSIGHTS_CONNECTION_STRING="your-connection-string"
-dotnet run --project AspireApmBackendsDemo.AppHost
+dotnet run --project src/AspireApmBackendsDemo.AppHost
+
+# Datadog APM
+$env:OBSERVABILITY_BACKEND="datadog"
+$env:DD_API_KEY="your-datadog-api-key"
+$env:DD_SITE="datadoghq.com"
+dotnet run --project src/AspireApmBackendsDemo.AppHost
 
 # Jaeger
 $env:OBSERVABILITY_BACKEND="jaeger"
-dotnet run --project AspireApmBackendsDemo.AppHost
+dotnet run --project src/AspireApmBackendsDemo.AppHost
 
 # Grafana Tempo
 $env:OBSERVABILITY_BACKEND="tempo"
-dotnet run --project AspireApmBackendsDemo.AppHost
+dotnet run --project src/AspireApmBackendsDemo.AppHost
 
 # Full Grafana Stack (Tempo + Prometheus + Loki)
 $env:OBSERVABILITY_BACKEND="grafana-full"
-dotnet run --project AspireApmBackendsDemo.AppHost
+dotnet run --project src/AspireApmBackendsDemo.AppHost
 ```
 
 ## Application Insights Setup
@@ -175,6 +204,17 @@ $env:APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=your-key;Ingestio
 ```
 
 Do not hardcode this value. Use environment variables or Azure Key Vault in production.
+
+## Datadog Setup
+
+When using the `datadog` backend, set `DD_API_KEY` before starting Aspire. `DD_SITE` defaults to `datadoghq.com`; set it to your Datadog site such as `datadoghq.eu`, `us3.datadoghq.com`, or `us5.datadoghq.com` when needed.
+
+```bash
+$env:DD_API_KEY="your-datadog-api-key"
+$env:DD_SITE="datadoghq.com"
+```
+
+Do not hardcode API keys. Use user secrets, environment variables, or your secret manager in production.
 
 ## Test Commands
 
@@ -212,21 +252,22 @@ curl http://localhost:8080/random
 |---------|--------|-------|
 | Elastic | http://localhost:5601 | Kibana → Observability → APM → Services |
 | Application Insights | Azure Portal | Application Insights → Transaction Search / Application Map / Failures |
+| Datadog | https://app.datadoghq.com/apm/services | APM -> Services -> `api-service`; use the matching Datadog site URL when `DD_SITE` is not `datadoghq.com` |
 | Jaeger | http://localhost:16686 | Search traces by service `api-service`; Jaeger does not store application logs or metrics |
 | Tempo | http://localhost:3000 | Grafana → Explore → Tempo datasource |
 | Grafana Full | http://localhost:3000 | Explore Tempo with service `api-service`; Explore Loki with `{service_name="api-service"}` |
 
 ## Backend Comparison
 
-| Feature | Elastic APM | Application Insights | Jaeger | Grafana Tempo | Full Grafana Stack |
-|---------|-------------|---------------------|--------|---------------|---------------------|
-| **Traces** | Yes | Yes | Yes | Yes | Yes |
-| **Metrics** | Yes | Yes | No | No | Yes (Prometheus) |
-| **Logs** | Yes (ELK) | Yes | No | No | Yes (Loki) |
-| **UI** | Kibana | Azure Portal | Jaeger UI | Grafana | Grafana |
-| **Hosting** | Self-hosted | Azure-managed | Self-hosted | Self-hosted | Self-hosted |
-| **Best For** | Full observability with Elasticsearch | Teams already in Azure | Simple trace visualization | Trace-focused teams | Complete observability stack |
-| **Complexity** | Medium-High | Low | Low | Medium | High |
+| Feature | Elastic APM | Application Insights | Datadog APM | Jaeger | Grafana Tempo | Full Grafana Stack |
+|---------|-------------|---------------------|-------------|--------|---------------|---------------------|
+| **Traces** | Yes | Yes | Yes | Yes | Yes | Yes |
+| **Metrics** | Yes | Yes | Yes | No | No | Yes (Prometheus) |
+| **Logs** | Yes (ELK) | Yes | Yes | No | No | Yes (Loki) |
+| **UI** | Kibana | Azure Portal | Datadog | Jaeger UI | Grafana | Grafana |
+| **Hosting** | Self-hosted | Azure-managed | Datadog-managed | Self-hosted | Self-hosted | Self-hosted |
+| **Best For** | Full observability with Elasticsearch | Teams already in Azure | Teams already using Datadog APM | Simple trace visualization | Trace-focused teams | Complete observability stack |
+| **Complexity** | Medium-High | Low | Low-Medium | Low | Medium | High |
 
 ## Design Decisions
 
@@ -265,6 +306,13 @@ The Application Insights exporter lives in the Collector because:
 - The Collector uses the Azure Monitor exporter
 - API code only knows about OTLP
 
+### Why Datadog Exporter and Connector?
+
+Datadog support stays Collector-based because:
+- The API service still exports standard OTLP signals only
+- The Collector uses the Datadog exporter for logs, metrics, and traces
+- The Datadog connector derives APM statistics from traces and sends them through the metrics pipeline
+
 ### Why Jaeger and Tempo Are Trace-Focused
 
 Jaeger and Tempo are trace backends in this demo:
@@ -296,6 +344,7 @@ Jaeger and Tempo are trace backends in this demo:
     /collector                         # OTel Collector configs
       collector-elastic.yml
       collector-appinsights.yml
+      collector-datadog.yml
       collector-jaeger.yml
       collector-tempo.yml
       collector-grafana-full.yml
@@ -313,11 +362,14 @@ Jaeger and Tempo are trace backends in this demo:
 
 | Variable | Description | Used By |
 |----------|-------------|---------|
-| `OBSERVABILITY_BACKEND` | Backend selection (elastic, appinsights, jaeger, tempo, grafana-full) | AppHost, API Service |
+| `OBSERVABILITY_BACKEND` | Backend selection (elastic, appinsights, datadog, jaeger, tempo, grafana-full) | AppHost, API Service |
 | `OTEL_SERVICE_NAME` | OpenTelemetry service name | API Service, Collector |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint for export | API Service |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | OTLP protocol (grpc/http) | API Service |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Azure App Insights connection string | Collector (appinsights backend only) |
+| `DD_API_KEY` | Datadog API key | Collector (datadog backend only) |
+| `DATADOG_API_KEY` | Alternate Datadog API key setting accepted by AppHost | AppHost (datadog backend only) |
+| `DD_SITE` | Datadog site, defaults to `datadoghq.com` | Collector (datadog backend only) |
 
 ## Ports
 
