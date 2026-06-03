@@ -275,8 +275,8 @@ curl <gateway-url>/api/dotnet/random
 
 ## Where to View Telemetry
 
-| Backend | UI URL | Notes ||
-|---------|--------|-------||
+| Backend | UI URL | Notes |Print Screens|
+|---------|--------|-------|-------|
 | Elastic | http://localhost:5601 | Kibana -> Observability -> APM -> Services |[![Small image / thumbnail](imgs/kibana-elastic-logspng-custom-200x150.jpg)](imgs/kibana-elastic-logspng.png)|
 | Application Insights | Azure Portal | Application Insights -> Transaction Search / Application Map / Failures |[![Small image / thumbnail](imgs/azure-appinsights-traces-custom-200x150.jpg)](imgs/azure-appinsights-traces.png)|
 | Datadog | https://app.datadoghq.com/apm/services | APM -> Services -> `gateway`, `api-service`, `node-api`, or `spring-boot-api`; use the matching Datadog site URL when `DD_SITE` is not `datadoghq.com` |[![Small image / thumbnail](imgs/datadog-traces-custom-200x150.jpg)](imgs/datadog-traces.png)|
