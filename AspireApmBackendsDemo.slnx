@@ -4,6 +4,7 @@
   </Folder>
   <Project Path="src/AspireApmBackendsDemo.ApiService/AspireApmBackendsDemo.ApiService.csproj" />
   <Project Path="src/AspireApmBackendsDemo.AppHost/AspireApmBackendsDemo.AppHost.csproj" />
+  <Project Path="src/AspireApmBackendsDemo.Gateway/AspireApmBackendsDemo.Gateway.csproj" />
   <Project Path="src/AspireApmBackendsDemo.ServiceDefaults/AspireApmBackendsDemo.ServiceDefaults.csproj" />
   <Project Path="src/AspireApmBackendsDemo.Web/AspireApmBackendsDemo.Web.csproj" />
 </Solution>

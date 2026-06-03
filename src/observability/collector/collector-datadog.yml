@@ -22,8 +22,8 @@ exporters:
 
   datadog:
     api:
-      key: ${DD_API_KEY}
-      site: ${DD_SITE}
+      key: ${env:DD_API_KEY}
+      site: ${env:DD_SITE}
 
 service:
   pipelines:
@@ -39,4 +39,5 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [debug, datadog]
+
 

@@ -1,164 +1,196 @@
-# .NET Aspire APM Backend Comparison Demo
+# Aspire APM Backends Microservices Demo
 
-This proof-of-concept demonstrates how to compare different APM/observability backends using OpenTelemetry Collector with a single .NET Aspire API service.
+This proof-of-concept compares APM/observability backends using a small microservices architecture, .NET Aspire orchestration, and OpenTelemetry Collector.
+
+The application is intentionally backend-neutral: apps export OpenTelemetry signals to the Collector, and the Collector decides whether those signals go to Elastic, Application Insights, Datadog, Jaeger, Tempo, or the full Grafana stack.
 
 ## Purpose
 
-Compare different APM/observability solutions with the same .NET API service:
-- **Switching backends** requires changing only Aspire infrastructure and Collector configuration
-- **No application code changes** required when switching backends
-- **Backend-neutral** API that only knows about OpenTelemetry and the Collector
+- Compare several APM backends with the same application topology.
+- Exercise distributed tracing through a YARP gateway.
+- Generate focused traces for three independent backend/database flows.
+- Generate application logs from the gateway, .NET API, Node API, and Spring Boot API.
 
 ## Architecture
 
-### Core Flow
+### Application Topology
 
+```mermaid
+graph LR
+    UI["🖥️ React UI<br/>Aspire-assigned endpoint"] --> GW["🚪 YARP Gateway<br/>Aspire service discovery"]
+
+    GW --> NET["⚙️ .NET API<br/>api-service"]
+    GW --> NODE["🟩 Node API<br/>node-api"]
+    GW --> SPRING["☕ Spring Boot API<br/>spring-boot-api"]
+
+    NET --> MSSQL[("🗄️ SQL Server<br/>mssql")]
+    NODE --> MONGO[("🍃 MongoDB<br/>mongo")]
+    SPRING --> PG[("🐘 PostgreSQL<br/>postgres")]
+
+    NET -. "OTLP traces/logs/metrics" .-> OTEL["🔭 OpenTelemetry Collector"]
+    GW -. "OTLP traces/logs/metrics" .-> OTEL
+    NODE -. "OTLP traces/logs" .-> OTEL
+    SPRING -. "OTLP traces/logs" .-> OTEL
+    OTEL --> BACKEND["📊 Selected APM backend"]
+
+    classDef ui fill:#DFF3FF,stroke:#2386C8,color:#102A43
+    classDef gateway fill:#FFE8CC,stroke:#F08C00,color:#3B2400
+    classDef api fill:#E7F5FF,stroke:#1971C2,color:#102A43
+    classDef node fill:#E6FCF5,stroke:#0CA678,color:#073B2E
+    classDef spring fill:#EBFBEA,stroke:#37B24D,color:#0B2E13
+    classDef db fill:#F3F0FF,stroke:#7950F2,color:#24124D
+    classDef collector fill:#FFF3BF,stroke:#F59F00,color:#3A2500
+    class UI ui
+    class GW gateway
+    class NET api
+    class NODE node
+    class SPRING spring
+    class MSSQL,MONGO,PG db
+    class OTEL collector
 ```
-.NET API
-  → OTLP exporter
-  → OpenTelemetry Collector
-  → selected backend
-```
+
+
+## Observability Backends
 
 ### 1. Elastic APM / ELK Stack
 
 ```mermaid
 graph LR
-    A["⚙️ .NET API"] --> B["📦 OTLP"]
-    B --> C["🔭 OpenTelemetry Collector"]
-    C --> D["🟣 Elastic APM Server"]
-    D --> E["🔎 Elasticsearch"]
-    E --> F["📊 Kibana"]
+    APP["🚪 Gateway + APIs"] --> OTLP["📦 OTLP"]
+    OTLP --> OC["🔭 OpenTelemetry Collector"]
+    OC --> APM["🟣 Elastic APM Server"]
+    APM --> ES["🔎 Elasticsearch"]
+    ES --> KB["📊 Kibana"]
 
-    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef app fill:#E7F5FF,stroke:#1971C2,color:#102A43
     classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
-    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef collector fill:#FFF3BF,stroke:#F59F00,color:#3A2500
     classDef elastic fill:#00BFB3,stroke:#00756E,color:#061D1B
     classDef ui fill:#F04E98,stroke:#A91F62,color:#fff
-    class A app
-    class B protocol
-    class C collector
-    class D,E elastic
-    class F ui
+    class APP app
+    class OTLP protocol
+    class OC collector
+    class APM,ES elastic
+    class KB ui
 ```
 
 ### 2. Azure Application Insights
 
 ```mermaid
 graph LR
-    A["⚙️ .NET API"] --> B["📦 OTLP"]
-    B --> C["🔭 OpenTelemetry Collector"]
-    C --> D["☁️ Azure Monitor<br/>Application Insights"]
+    APP["🚪 Gateway + APIs"] --> OTLP["📦 OTLP"]
+    OTLP --> OC["🔭 OpenTelemetry Collector"]
+    OC --> AI["☁️ Azure Monitor<br/>Application Insights"]
 
-    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef app fill:#E7F5FF,stroke:#1971C2,color:#102A43
     classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
-    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef collector fill:#FFF3BF,stroke:#F59F00,color:#3A2500
     classDef azure fill:#0078D4,stroke:#004E8A,color:#fff
-    class A app
-    class B protocol
-    class C collector
-    class D azure
+    class APP app
+    class OTLP protocol
+    class OC collector
+    class AI azure
 ```
 
 ### 3. Datadog APM
 
 ```mermaid
 graph LR
-    A["⚙️ .NET API"] --> B["📦 OTLP"]
-    B --> C["🔭 OpenTelemetry Collector"]
-    C --> D["🐶 Datadog Exporter"]
-    C --> E["📈 Datadog Connector<br/>APM stats"]
-    D --> F["☁️ Datadog APM"]
-    E --> F
+    APP["🚪 Gateway + APIs"] --> OTLP["📦 OTLP"]
+    OTLP --> OC["🔭 OpenTelemetry Collector"]
+    OC --> DDEXP["🐶 Datadog Exporter"]
+    OC --> DDCON["📈 Datadog Connector<br/>APM stats"]
+    DDEXP --> DD["☁️ Datadog APM"]
+    DDCON --> DD
 
-    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef app fill:#E7F5FF,stroke:#1971C2,color:#102A43
     classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
-    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef collector fill:#FFF3BF,stroke:#F59F00,color:#3A2500
     classDef datadog fill:#632CA6,stroke:#3D1D66,color:#fff
     classDef cloud fill:#00A3A3,stroke:#006666,color:#fff
-    class A app
-    class B protocol
-    class C collector
-    class D,E datadog
-    class F cloud
+    class APP app
+    class OTLP protocol
+    class OC collector
+    class DDEXP,DDCON datadog
+    class DD cloud
 ```
 
 ### 4. Jaeger
 
 ```mermaid
 graph LR
-    A["⚙️ .NET API"] --> B["📦 OTLP"]
-    B --> C["🔭 OpenTelemetry Collector"]
-    C --> D["🧭 Jaeger"]
-    D --> E["🕵️ Jaeger UI"]
+    APP["🚪 Gateway + APIs"] --> OTLP["📦 OTLP"]
+    OTLP --> OC["🔭 OpenTelemetry Collector"]
+    OC --> JAEGER["🧭 Jaeger"]
+    JAEGER --> UI["🕵️ Jaeger UI"]
 
-    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef app fill:#E7F5FF,stroke:#1971C2,color:#102A43
     classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
-    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef collector fill:#FFF3BF,stroke:#F59F00,color:#3A2500
     classDef jaeger fill:#66C2A5,stroke:#2F7D69,color:#10231E
     classDef ui fill:#8E44AD,stroke:#5E2A78,color:#fff
-    class A app
-    class B protocol
-    class C collector
-    class D jaeger
-    class E ui
+    class APP app
+    class OTLP protocol
+    class OC collector
+    class JAEGER jaeger
+    class UI ui
 ```
 
 ### 5. Grafana Tempo
 
 ```mermaid
 graph LR
-    A["⚙️ .NET API"] --> B["📦 OTLP"]
-    B --> C["🔭 OpenTelemetry Collector"]
-    C --> D["⏱️ Tempo"]
-    D --> E["📈 Grafana"]
+    APP["🚪 Gateway + APIs"] --> OTLP["📦 OTLP"]
+    OTLP --> OC["🔭 OpenTelemetry Collector"]
+    OC --> TEMPO["⏱️ Tempo"]
+    TEMPO --> GRAFANA["📈 Grafana"]
 
-    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef app fill:#E7F5FF,stroke:#1971C2,color:#102A43
     classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
-    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef collector fill:#FFF3BF,stroke:#F59F00,color:#3A2500
     classDef tempo fill:#7B61FF,stroke:#443399,color:#fff
     classDef grafana fill:#F46800,stroke:#9B3F00,color:#fff
-    class A app
-    class B protocol
-    class C collector
-    class D tempo
-    class E grafana
+    class APP app
+    class OTLP protocol
+    class OC collector
+    class TEMPO tempo
+    class GRAFANA grafana
 ```
 
 ### 6. Full Grafana Stack
 
 ```mermaid
 graph LR
-    A["⚙️ .NET API"] --> B["📦 OTLP"]
-    B --> C["🔭 OpenTelemetry Collector"]
-    C --> D["⏱️ Tempo<br/>traces"]
-    C --> E["🔥 Prometheus<br/>metrics"]
-    C --> F["🪵 Loki<br/>logs"]
-    D --> G["📈 Grafana"]
-    E --> G
-    F --> G
+    APP["🚪 Gateway + APIs"] --> OTLP["📦 OTLP"]
+    OTLP --> OC["🔭 OpenTelemetry Collector"]
+    OC --> TEMPO["⏱️ Tempo<br/>traces"]
+    OC --> PROM["🔥 Prometheus<br/>metrics"]
+    OC --> LOKI["🪵 Loki<br/>logs"]
+    TEMPO --> GRAFANA["📈 Grafana"]
+    PROM --> GRAFANA
+    LOKI --> GRAFANA
 
-    classDef app fill:#512BD4,stroke:#2b166f,color:#fff
+    classDef app fill:#E7F5FF,stroke:#1971C2,color:#102A43
     classDef protocol fill:#E8F1FF,stroke:#4C7BD9,color:#16325C
-    classDef collector fill:#F5A623,stroke:#9A6400,color:#111
+    classDef collector fill:#FFF3BF,stroke:#F59F00,color:#3A2500
     classDef tempo fill:#7B61FF,stroke:#443399,color:#fff
     classDef prometheus fill:#E6522C,stroke:#9C2E16,color:#fff
     classDef loki fill:#2ECC71,stroke:#1F8E4D,color:#102015
     classDef grafana fill:#F46800,stroke:#9B3F00,color:#fff
-    class A app
-    class B protocol
-    class C collector
-    class D tempo
-    class E prometheus
-    class F loki
-    class G grafana
+    class APP app
+    class OTLP protocol
+    class OC collector
+    class TEMPO tempo
+    class PROM prometheus
+    class LOKI loki
+    class GRAFANA grafana
 ```
 
 ## How to Run
 
 ### Prerequisites
 
-- Docker Desktop (with Kubernetes support)
+- Docker Desktop
 - .NET 10 SDK
 - Aspire workload installed (`dotnet workload install aspire`)
 
@@ -166,7 +198,7 @@ graph LR
 
 Set the `OBSERVABILITY_BACKEND` environment variable before running:
 
-```bash
+```powershell
 # Elastic APM / ELK Stack
 $env:OBSERVABILITY_BACKEND="elastic"
 dotnet run --project src/AspireApmBackendsDemo.AppHost
@@ -197,19 +229,19 @@ dotnet run --project src/AspireApmBackendsDemo.AppHost
 
 ## Application Insights Setup
 
-When using `appinsights` backend, you must set the `APPLICATIONINSIGHTS_CONNECTION_STRING` environment variable:
+When using `appinsights`, set `APPLICATIONINSIGHTS_CONNECTION_STRING`:
 
-```bash
+```powershell
 $env:APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=your-key;IngestionEndpoint=https://your-endpoint.in.applicationinsights.azure.com/"
 ```
 
-Do not hardcode this value. Use environment variables or Azure Key Vault in production.
+Do not hardcode this value. Use environment variables, user secrets, or Azure Key Vault in production.
 
 ## Datadog Setup
 
-When using the `datadog` backend, set `DD_API_KEY` before starting Aspire. `DD_SITE` defaults to `datadoghq.com`; set it to your Datadog site such as `datadoghq.eu`, `us3.datadoghq.com`, or `us5.datadoghq.com` when needed.
+When using `datadog`, set `DD_API_KEY` before starting Aspire. `DD_SITE` defaults to `datadoghq.com`; set it to your Datadog site such as `datadoghq.eu`, `us3.datadoghq.com`, or `us5.datadoghq.com` when needed.
 
-```bash
+```powershell
 $env:DD_API_KEY="your-datadog-api-key"
 $env:DD_SITE="datadoghq.com"
 ```
@@ -217,45 +249,42 @@ $env:DD_SITE="datadoghq.com"
 Do not hardcode API keys. Use user secrets, environment variables, or your secret manager in production.
 
 ## Test Commands
+[![Small image / thumbnail](imgs/react-ui-test-custom-300x200.jpg)](imgs/react-ui-test.png)
 
-After starting the application, use curl to test each endpoint:
+After starting the application, call backend APIs through the YARP gateway. The React UI also calls the gateway, never the backend APIs directly. Each API writes to its own database and does not call the other APIs.
 
-```bash
-# Root endpoint - shows selected backend
-curl http://localhost:8080/
+Aspire assigns the application-facing host endpoints at run time. Open the Aspire dashboard and use the `react-ui` endpoint for the browser, or copy the `gateway` endpoint for direct API calls.
 
-# Health check
-curl http://localhost:8080/health
 
-# Error endpoint - throws exception for APM testing
-curl http://localhost:8080/error
+```powershell
+# Replace <gateway-url> with the gateway endpoint shown in the Aspire dashboard.
 
-# Slow response - 2 second delay
-curl http://localhost:8080/slow
+# Gateway route map
+curl <gateway-url>/
 
-# Outgoing HTTP call - tests dependency tracing
-curl http://localhost:8080/outgoing
+# Independent microservice traces through the gateway
+curl <gateway-url>/api/dotnet/work
+curl <gateway-url>/api/node/work
+curl <gateway-url>/api/spring/work
 
-# Log levels - generates info, warning, and error logs
-curl http://localhost:8080/logs
-
-# Custom span - creates custom Activity/span with tags and events
-curl http://localhost:8080/custom-span
-
-# Random - randomly returns success, slow response, or error
-curl http://localhost:8080/random
+# Existing .NET demo endpoints through the gateway
+curl <gateway-url>/api/dotnet/custom-span
+curl <gateway-url>/api/dotnet/outgoing
+curl <gateway-url>/api/dotnet/random
 ```
 
 ## Where to View Telemetry
 
-| Backend | UI URL | Notes |
-|---------|--------|-------|
-| Elastic | http://localhost:5601 | Kibana → Observability → APM → Services |
-| Application Insights | Azure Portal | Application Insights → Transaction Search / Application Map / Failures |
-| Datadog | https://app.datadoghq.com/apm/services | APM -> Services -> `api-service`; use the matching Datadog site URL when `DD_SITE` is not `datadoghq.com` |
-| Jaeger | http://localhost:16686 | Search traces by service `api-service`; Jaeger does not store application logs or metrics |
-| Tempo | http://localhost:3000 | Grafana → Explore → Tempo datasource |
-| Grafana Full | http://localhost:3000 | Explore Tempo with service `api-service`; Explore Loki with `{service_name="api-service"}` |
+| Backend | UI URL | Notes ||
+|---------|--------|-------||
+| Elastic | http://localhost:5601 | Kibana -> Observability -> APM -> Services |[![Small image / thumbnail](imgs/kibana-elastic-logspng-custom-200x150.jpg)](imgs/kibana-elastic-logspng.png)|
+| Application Insights | Azure Portal | Application Insights -> Transaction Search / Application Map / Failures |[![Small image / thumbnail](imgs/azure-appinsights-traces-custom-200x150.jpg)](imgs/azure-appinsights-traces.png)|
+| Datadog | https://app.datadoghq.com/apm/services | APM -> Services -> `gateway`, `api-service`, `node-api`, or `spring-boot-api`; use the matching Datadog site URL when `DD_SITE` is not `datadoghq.com` |[![Small image / thumbnail](imgs/datadog-traces-custom-200x150.jpg)](imgs/datadog-traces.png)|
+| Jaeger | http://localhost:16686 | Search traces by service `gateway`, then inspect child backend spans |[![Small image / thumbnail](imgs/jaeger-traces-custom-200x150.jpg)](imgs/jaeger-traces.png)|
+| Tempo | http://localhost:3000 | Grafana -> Explore -> Tempo datasource |
+| Grafana Full | http://localhost:3000 | Explore Tempo for traces; Explore Loki with `{service_name="api-service"}`, `{service_name="gateway"}`, `{service_name="node-api"}`, or `{service_name="spring-boot-api"}` |[![Small image / thumbnail](imgs/grafana-tempo-traces-custom-200x150.jpg)](imgs/grafana-tempo-traces.png)|
+
+Node API and Spring Boot API emit OTLP logs. Those logs are exported only by backend modes with a logs pipeline: `elastic`, `appinsights`, `datadog`, and `grafana-full`. Jaeger and Tempo modes remain trace-only.
 
 ## Backend Comparison
 
@@ -269,132 +298,20 @@ curl http://localhost:8080/random
 | **Best For** | Full observability with Elasticsearch | Teams already in Azure | Teams already using Datadog APM | Simple trace visualization | Trace-focused teams | Complete observability stack |
 | **Complexity** | Medium-High | Low | Low-Medium | Low | Medium | High |
 
-## Design Decisions
-
-### Why OpenTelemetry Collector?
-
-The Collector provides a clear separation between application code and backend configuration:
-- Applications only need to know about OTLP
-- Backend-specific exporters live in the Collector
-- Switching backends doesn't require recompiling the application
-
-### Why Backend-Neutral API?
-
-The same API code works with all backends because:
-- It only uses OpenTelemetry SDK and OTLP exporter
-- No backend-specific packages (Elastic APM .NET Agent, Application Insights SDK, Jaeger client, etc.)
-- Configuration happens at deployment/infrastructure level
-
-### Why Not Logstash?
-
-Logstash is not needed because:
-- OpenTelemetry Collector handles log export directly
-- The Collector has native OTLP support for logs
-- Adding Logstash would introduce another service and complexity
-
-### Why Elastic APM Server?
-
-For Elastic APM:
-- The APM Server is the native ingestion point for Elastic's APM format
-- It converts OTLP data to Elastic's format for Elasticsearch
-- Kibana's APM UI expects data in this format
-
-### Why Collector-Based Application Insights Exporter?
-
-The Application Insights exporter lives in the Collector because:
-- It keeps the API service backend-neutral
-- The Collector uses the Azure Monitor exporter
-- API code only knows about OTLP
-
-### Why Datadog Exporter and Connector?
-
-Datadog support stays Collector-based because:
-- The API service still exports standard OTLP signals only
-- The Collector uses the Datadog exporter for logs, metrics, and traces
-- The Datadog connector derives APM statistics from traces and sends them through the metrics pipeline
-
-### Why Jaeger and Tempo Are Trace-Focused
-
-Jaeger and Tempo are trace backends in this demo:
-- Jaeger receives traces only; application logs and metrics are not exported in `jaeger` mode
-- Tempo is designed for traces; metrics come from Prometheus
-- For full observability, the Grafana full stack is recommended
-
-### Trade-offs of Using Collector
-
-**Advantages:**
-- More flexible backend selection
-- Centralized backend configuration
-- Easier backend switching
-- Single point for sampling and processing
-
-**Disadvantages:**
-- One extra running service (the Collector)
-- Additional network hop
-- Collector configuration complexity
-
-## Project Structure
-
-```
-/AspireApmBackendsDemo
-  /AspireApmBackendsDemo.AppHost      # Aspire orchestration
-  /AspireApmBackendsDemo.ApiService   # .NET Minimal API
-  /AspireApmBackendsDemo.ServiceDefaults # Shared configuration
-  /observability
-    /collector                         # OTel Collector configs
-      collector-elastic.yml
-      collector-appinsights.yml
-      collector-datadog.yml
-      collector-jaeger.yml
-      collector-tempo.yml
-      collector-grafana-full.yml
-    /elastic
-      apm-server.yml
-    /grafana
-      tempo.yml
-      prometheus.yml
-      loki.yml
-      grafana-datasources.yml
-  README.md
-```
-
-## Environment Variables
-
-| Variable | Description | Used By |
-|----------|-------------|---------|
-| `OBSERVABILITY_BACKEND` | Backend selection (elastic, appinsights, datadog, jaeger, tempo, grafana-full) | AppHost, API Service |
-| `OTEL_SERVICE_NAME` | OpenTelemetry service name | API Service, Collector |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint for export | API Service |
-| `OTEL_EXPORTER_OTLP_PROTOCOL` | OTLP protocol (grpc/http) | API Service |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Azure App Insights connection string | Collector (appinsights backend only) |
-| `DD_API_KEY` | Datadog API key | Collector (datadog backend only) |
-| `DATADOG_API_KEY` | Alternate Datadog API key setting accepted by AppHost | AppHost (datadog backend only) |
-| `DD_SITE` | Datadog site, defaults to `datadoghq.com` | Collector (datadog backend only) |
-
-## Ports
-
-| Service | Port | Description |
-|---------|------|-------------|
-| api-service | 8080 | ASP.NET Core API |
-| otel-collector | 4317 | OTLP gRPC |
-| otel-collector | 4318 | OTLP HTTP |
-| elasticsearch | 9200 | Elasticsearch |
-| kibana | 5601 | Kibana |
-| apm-server | 8200 | Elastic APM Server |
-| jaeger-ui | 16686 | Jaeger UI |
-| jaeger-otlp | 4317 | Jaeger OTLP |
-| tempo | 3100 | Tempo HTTP |
-| tempo-otlp | 4317 | Tempo OTLP inside the Docker network; not published to the host |
-| prometheus | 9090 | Prometheus |
-| loki | 3100 | Loki |
-| grafana | 3000 | Grafana |
-
 ## Cleanup
 
-To stop all containers:
+Stop the Aspire orchestration with Ctrl+C. If containers are left behind, stop them from Docker Desktop or run:
 
-```bash
-docker ps --filter "name=otel-collector" --filter "name=elasticsearch" --filter "name=kibana" --filter "name=apm-server" --filter "name=jaeger" --filter "name=tempo" --filter "name=prometheus" --filter "name=loki" --filter "name=grafana" -q | xargs docker stop
+```powershell
+docker ps --filter "name=otel-collector" --filter "name=elasticsearch" --filter "name=kibana" --filter "name=apm-server" --filter "name=jaeger" --filter "name=tempo" --filter "name=prometheus" --filter "name=loki" --filter "name=grafana" -q | ForEach-Object { docker stop $_ }
 ```
+## Next To Do
 
-Or simply stop the Aspire orchestration with Ctrl+C.
+Add database engine observability in addition to application-side database spans:
+
+- Add PostgreSQL engine metrics with `postgres_exporter` in `grafana-full` mode.
+- Add MongoDB engine metrics with `mongodb_exporter` in `grafana-full` mode.
+- Add SQL Server engine metrics with a SQL Server exporter or Telegraf in `grafana-full` mode.
+- Add Grafana dashboards for database connections, query latency, locks, cache, IO, and errors.
+- Add optional Datadog Agent database integrations for SQL Server, MongoDB, and PostgreSQL in `datadog` mode.
+

@@ -1,4 +1,6 @@
+using System.Data;
 using System.Diagnostics;
+using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +26,8 @@ if (app.Environment.IsDevelopment())
 }
 
 var activitySource = new ActivitySource(Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "api-service");
+var mssqlConnectionString = builder.Configuration.GetConnectionString("mssql")
+    ?? throw new InvalidOperationException("Connection string 'mssql' must be provided by the AppHost.");
 
 app.MapGet("/", () =>
 {
@@ -36,6 +40,66 @@ app.MapGet("/", () =>
 app.MapGet("/health", () => Results.Ok("OK"))
     .WithName("Health")
     .WithOpenApi(operation => new(operation) { Summary = "Health check endpoint" });
+
+app.MapGet("/work", async (ILogger<Program> logger) =>
+{
+    using var activity = activitySource.StartActivity("dotnet-mssql-work", ActivityKind.Internal);
+
+    try
+    {
+        await using var connection = await OpenSqlConnectionWithRetryAsync(mssqlConnectionString);
+
+        await using (var createCommand = connection.CreateCommand())
+        {
+            createCommand.CommandText = """
+                if object_id('dbo.demo_events', 'U') is null
+                begin
+                    create table dbo.demo_events
+                    (
+                        id int identity(1,1) primary key,
+                        service nvarchar(128) not null,
+                        created_at datetime2 not null default sysutcdatetime()
+                    );
+                end
+                """;
+            await createCommand.ExecuteNonQueryAsync();
+        }
+
+        await using var insertCommand = connection.CreateCommand();
+        insertCommand.CommandText = """
+            insert into dbo.demo_events(service)
+            output inserted.id, inserted.created_at
+            values (@service);
+            """;
+        insertCommand.Parameters.Add(new SqlParameter("@service", SqlDbType.NVarChar, 128) { Value = "api-service" });
+
+        await using var reader = await insertCommand.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        var result = new
+        {
+            service = "api-service",
+            database = "mssql",
+            eventId = reader.GetInt32(0),
+            createdAt = reader.GetDateTime(1)
+        };
+
+        logger.LogInformation("Wrote .NET API event {EventId} to MSSQL", result.eventId);
+        return Results.Ok(result);
+    }
+    catch (Exception exception)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+        activity?.SetTag("error.type", exception.GetType().FullName);
+        activity?.SetTag("error.message", exception.Message);
+        activity?.SetTag("error.stack", exception.ToString());
+        activity?.AddException(exception);
+        logger.LogError(exception, "Failed to write .NET API event to MSSQL");
+        throw;
+    }
+})
+.WithName("Work")
+.WithOpenApi(operation => new(operation) { Summary = "Writes a .NET API event to MSSQL" });
 
 app.MapGet("/error", () =>
 {
@@ -118,3 +182,20 @@ app.MapGet("/random", (ILogger<Program> logger) =>
 app.MapDefaultEndpoints();
 
 app.Run();
+
+static async Task<SqlConnection> OpenSqlConnectionWithRetryAsync(string connectionString)
+{
+    var connection = new SqlConnection(connectionString);
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            await connection.OpenAsync();
+            return connection;
+        }
+        catch when (attempt < 60)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+    }
+}
