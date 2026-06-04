@@ -58,20 +58,26 @@ jobs:
           az group create \
             --name "${AZURE_RESOURCE_GROUP}" \
             --location "${AZURE_LOCATION}"
-      
+
       - name: Register required Azure providers
+#    To Register required Azure providers, the GitHub OIDC principal needs to have at least "Contributor" role at    
+#    the subscription scope. You can assign the role with the following command:  
+#              az role assignment create \
+#                   --assignee "612b1f5f-8b02-4fa9-89c7-e90bcbd00810" \
+#                   --role "Contributor" \
+#                   --scope "/subscriptions/5d452b20-1e7f-4958-b452-e78cb2a3dea5"
         run: |
           az provider register -n Microsoft.App --wait
           az provider register -n Microsoft.OperationalInsights --wait
           az provider register -n Microsoft.ContainerRegistry --wait
           
       - name: Restore .NET projects
-        run: dotnet restore AspireApp/AspireApp.sln
+        run: dotnet restore AspireApmBackendsDemo.slnx
 
       - name: Deploy with Aspire
         run: |
           aspire deploy \
-            --project AspireApp/AspireApp.AppHost/AspireApp.AppHost.csproj \
+            --project src/AspireApmBackendsDemo.AppHost/AspireApmBackendsDemo.AppHost.csproj \
             --non-interactive
 
       
