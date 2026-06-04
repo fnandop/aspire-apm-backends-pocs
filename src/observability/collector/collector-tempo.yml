@@ -13,7 +13,7 @@ processors:
 
 exporters:
   otlp/tempo:
-    endpoint: tempo:4317
+    endpoint: ${env:TEMPO_OTLP_ENDPOINT}
     tls:
       insecure: true
 

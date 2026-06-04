@@ -18,7 +18,7 @@ exporters:
     sampling_thereafter: 200
 
   otlp/tempo:
-    endpoint: tempo:4317
+    endpoint: ${env:TEMPO_OTLP_ENDPOINT}
     tls:
       insecure: true
 
@@ -29,7 +29,7 @@ exporters:
       service: api-service
 
   otlphttp/loki:
-    endpoint: http://loki:3100/otlp
+    endpoint: ${env:LOKI_OTLP_ENDPOINT}
     tls:
       insecure: true
 

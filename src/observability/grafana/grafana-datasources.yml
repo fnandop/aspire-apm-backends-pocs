@@ -5,7 +5,7 @@ datasources:
     uid: tempo
     type: tempo
     access: proxy
-    url: http://tempo:3100
+    url: ${TEMPO_URL}
     isDefault: true
     editable: true
     jsonData:
@@ -17,7 +17,7 @@ datasources:
     uid: prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus:9090
+    url: ${PROMETHEUS_URL}
     editable: true
     jsonData:
       timeInterval: 15s
@@ -26,7 +26,7 @@ datasources:
     uid: loki
     type: loki
     access: proxy
-    url: http://loki:3100
+    url: ${LOKI_URL}
     editable: true
     jsonData:
       derivedFields:
