@@ -2,6 +2,9 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 const gatewayUrl = process.env.GATEWAY_URL;
+const extraAllowedHosts = process.env.VITE_ALLOWED_HOSTS
+  ? process.env.VITE_ALLOWED_HOSTS.split(',').map((host) => host.trim()).filter(Boolean)
+  : [];
 
 if (!gatewayUrl) {
   throw new Error('GATEWAY_URL must be provided by the AppHost.');
@@ -21,6 +24,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
+    allowedHosts: ['.azurecontainerapps.io', ...extraAllowedHosts],
     proxy: {
       '/api': {
         target: makeContainerReachable(gatewayUrl),

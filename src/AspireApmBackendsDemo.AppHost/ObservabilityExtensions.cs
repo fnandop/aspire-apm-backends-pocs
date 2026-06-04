@@ -121,6 +121,7 @@ internal static class ObservabilityExtensions
         var kibana = builder.AddContainer("kibana", "docker.elastic.co/kibana/kibana:8.15.0")
             .WithHttpEndpoint(5601, isProxied: false)
             .WithEnvironment("ELASTICSEARCH_HOSTS", "http://elasticsearch:9200")
+            .WithExternalHttpEndpoints()
             .WaitFor(elasticsearch);
 
         var apmServerConfigPath = Path.Combine(paths.ObservabilityDir, "elastic", "apm-server.yml");
@@ -219,7 +220,8 @@ internal static class ObservabilityExtensions
             .WithHttpEndpoint(3000, isProxied: false)
             .WithEnvironment("GF_AUTH_ANONYMOUS_ENABLED", "true")
             .WithEnvironment("GF_AUTH_ANONYMOUS_ORG_ROLE", "Admin")
-            .WithEnvironment("GF_AUTH_DISABLE_LOGIN_FORM", "true");
+            .WithEnvironment("GF_AUTH_DISABLE_LOGIN_FORM", "true")
+            .WithExternalHttpEndpoints();
 
         if (builder.ExecutionContext.IsRunMode)
         {
