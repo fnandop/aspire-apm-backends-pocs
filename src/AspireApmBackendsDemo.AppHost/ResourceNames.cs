@@ -3,6 +3,7 @@ internal static class ResourceNames
     public const string DefaultBackend = "grafana-full";
     public const string ObservabilityDatabase = "observability";
     public const string MssqlPassword = "P@ssw0rd12345!";
+    public const string ContainerAppEnvironment = "aca-env";
 
     public const string OtelCollector = "otel-collector";
     public const string ApiService = "api-service";

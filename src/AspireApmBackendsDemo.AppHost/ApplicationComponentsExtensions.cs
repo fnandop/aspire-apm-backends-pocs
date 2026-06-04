@@ -13,6 +13,7 @@ internal static class ApplicationComponentsExtensions
 
         var gateway = builder.AddProject<Projects.AspireApmBackendsDemo_Gateway>(ResourceNames.Gateway)
             .WithHttpEndpoint(name: ResourceNames.HttpEndpoint, isProxied: false)
+            .WithExternalHttpEndpoints()
             .WithEnvironment("OTEL_SERVICE_NAME", ResourceNames.Gateway)
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", observability.OtelCollector.GetEndpoint(ResourceNames.OtlpGrpcEndpoint))
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")
@@ -28,6 +29,7 @@ internal static class ApplicationComponentsExtensions
 
         var reactUi = builder.AddDockerfile(ResourceNames.ReactUi, Path.Combine(paths.SourceDir, "ReactUi"))
             .WithHttpEndpoint(targetPort: ResourceNames.ReactUiPort, name: ResourceNames.HttpEndpoint, isProxied: false)
+            .WithExternalHttpEndpoints()
             .WithEnvironment("GATEWAY_URL", gateway.GetEndpoint(ResourceNames.HttpEndpoint))
             .WaitFor(gateway);
 

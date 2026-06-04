@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.3.5">
+<Project Sdk="Aspire.AppHost.Sdk/13.4.0">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>73b48d4e-4f01-4baf-bd86-65c13fa0bb59</UserSecretsId>
-    <IncludeAllContainerVolfiles>true</IncludeAllContainerVolfiles>
+    <IncludeAllContainerVolFiles>true</IncludeAllContainerVolFiles>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" Version="13.4.0" />
     <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.4.0" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.4.0" />
     <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.4.0" />
