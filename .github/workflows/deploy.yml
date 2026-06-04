@@ -1,0 +1,77 @@
+name: Deploy Aspire Apm Backends Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      observability_backend:
+        description: Target Apm Backend
+        required: true
+        default: dev
+        type: choice
+        options:
+          - elastic      
+          - appinsights  
+          - datadog      
+          - jaeger       
+          - tempo        
+          - grafana-full 
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+   
+    env:
+      OBSERVABILITY_BACKEND: ${{ inputs.observability_backend }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      APP_CONFIG_NAME: ${{ vars.APP_CONFIG_NAME }}
+      KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+      Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      Azure__Location: ${{ vars.AZURE_LOCATION }}
+      Azure__ResourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install Aspire CLI
+        run: dotnet tool update -g Aspire.Cli --prerelease
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ensure resource group exists
+        run: |
+          az group create \
+            --name "${AZURE_RESOURCE_GROUP}" \
+            --location "${AZURE_LOCATION}"
+      
+      - name: Register required Azure providers
+        run: |
+          az provider register -n Microsoft.App --wait
+          az provider register -n Microsoft.OperationalInsights --wait
+          az provider register -n Microsoft.ContainerRegistry --wait
+          
+      - name: Restore .NET projects
+        run: dotnet restore AspireApp/AspireApp.sln
+
+      - name: Deploy with Aspire
+        run: |
+          aspire deploy \
+            --project AspireApp/AspireApp.AppHost/AspireApp.AppHost.csproj \
+            --non-interactive
+
+      
