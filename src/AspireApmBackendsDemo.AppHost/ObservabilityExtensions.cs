@@ -11,6 +11,7 @@ internal static class ObservabilityExtensions
             .WithHttpEndpoint(4318, name: ResourceNames.OtlpHttpEndpoint, isProxied: false)
             .WithHttpEndpoint(4317, name: ResourceNames.OtlpGrpcEndpoint, isProxied: false)
             .WithHttpEndpoint(8889, name: "prometheus-metrics", isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("OBSERVABILITY_BACKEND", backend)
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc");
@@ -114,6 +115,7 @@ internal static class ObservabilityExtensions
     {
         var elasticsearch = builder.AddContainer("elasticsearch", "docker.elastic.co/elasticsearch/elasticsearch:8.15.0")
             .WithHttpEndpoint(9200, isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("discovery.type", "single-node")
             .WithEnvironment("xpack.security.enabled", "false")
             .WithEnvironment("xpack.security.enrollment.enabled", "false")
@@ -121,6 +123,7 @@ internal static class ObservabilityExtensions
 
         var kibana = builder.AddContainer("kibana", "docker.elastic.co/kibana/kibana:8.15.0")
             .WithHttpEndpoint(5601, isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("ELASTICSEARCH_HOSTS", "http://elasticsearch:9200")
             .WithExternalHttpEndpoints()
             .WaitFor(elasticsearch);
@@ -128,6 +131,7 @@ internal static class ObservabilityExtensions
         var apmServerConfigPath = Path.Combine(paths.ObservabilityDir, "elastic", "apm-server.yml");
         var apmServer = builder.AddElasticApmServer(paths)
             .WithHttpEndpoint(8200, isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("ELASTICSEARCH_HOSTS", "http://elasticsearch:9200")
             .WithEnvironment("KIBANA_HOST", "http://kibana:5601")
             .WithEnvironment("OUTPUT_ELASTICSEARCH_HOSTS", "http://elasticsearch:9200")
@@ -154,6 +158,7 @@ internal static class ObservabilityExtensions
         var jaeger = builder.AddContainer("jaeger", "jaegertracing/all-in-one:latest")
             .WithHttpEndpoint(16686, name: "jaeger-ui", isProxied: false)
             .WithHttpEndpoint(14268, name: "jaeger-thrift-http", isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("COLLECTOR_OTLP_ENABLED", "true");
 
         observability.OtelCollector.WaitFor(jaeger);
@@ -170,6 +175,7 @@ internal static class ObservabilityExtensions
             .WithHttpEndpoint(3100, name: "tempo-http", isProxied: false)
             .WithHttpEndpoint(4317, name: "tempo-otlp-grpc", isProxied: false)
             .WithHttpEndpoint(4318, name: "tempo-otlp-http", isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithArgs("-config.file=/etc/tempo.yaml");
 
         if (builder.ExecutionContext.IsRunMode)
@@ -195,13 +201,16 @@ internal static class ObservabilityExtensions
             .WithHttpEndpoint(3100, name: "tempo-http", isProxied: false)
             .WithHttpEndpoint(4317, name: "tempo-otlp-grpc", isProxied: false)
             .WithHttpEndpoint(4318, name: "tempo-otlp-http", isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithArgs("-config.file=/etc/tempo.yaml");
 
         var prometheus = builder.AddPrometheusContainer(paths)
-            .WithHttpEndpoint(9090, isProxied: false);
+            .WithHttpEndpoint(9090, isProxied: false)
+            .AllowInsecureHttpIngress();
 
         var loki = builder.AddLokiContainer(paths)
             .WithHttpEndpoint(3101, targetPort: 3100, isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithArgs("-config.file=/etc/loki/local-config.yaml");
 
         observability.OtelCollector
@@ -238,6 +247,7 @@ internal static class ObservabilityExtensions
 
         grafana
             .WithHttpEndpoint(3000, isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("GF_AUTH_ANONYMOUS_ENABLED", "true")
             .WithEnvironment("GF_AUTH_ANONYMOUS_ORG_ROLE", "Admin")
             .WithEnvironment("GF_AUTH_DISABLE_LOGIN_FORM", "true")

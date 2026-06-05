@@ -29,6 +29,7 @@ internal static class ApplicationComponentsExtensions
         var reactUi = builder.AddDockerfile(ResourceNames.ReactUi, Path.Combine(paths.SourceDir, "ReactUi"))
             .WithHttpEndpoint(targetPort: ResourceNames.ReactUiPort, name: ResourceNames.HttpEndpoint, isProxied: false)
             .WithExternalHttpEndpoints()
+            .AllowInsecureHttpIngress()
             .WithEnvironment("GATEWAY_URL", gateway.GetEndpoint(ResourceNames.HttpEndpoint))
             .WaitFor(gateway);
 
@@ -54,6 +55,7 @@ internal static class ApplicationComponentsExtensions
 
         var nodeApi = builder.AddDockerfile(ResourceNames.NodeApi, Path.Combine(paths.SourceDir, "NodeApi"))
             .WithHttpEndpoint(targetPort: ResourceNames.NodeApiPort, name: ResourceNames.HttpEndpoint, isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("PORT", ResourceNames.NodeApiPort.ToString())
             .WithEnvironment("OTEL_SERVICE_NAME", ResourceNames.NodeApi)
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", observability.OtelCollector.GetEndpoint(ResourceNames.OtlpGrpcEndpoint))
@@ -76,6 +78,7 @@ internal static class ApplicationComponentsExtensions
 
         var springApi = builder.AddDockerfile(ResourceNames.SpringBootApi, Path.Combine(paths.SourceDir, "SpringBootApi"))
             .WithHttpEndpoint(targetPort: ResourceNames.SpringBootApiPort, name: ResourceNames.HttpEndpoint, isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("SERVER_PORT", ResourceNames.SpringBootApiPort.ToString())
             .WithEnvironment("OTEL_SERVICE_NAME", ResourceNames.SpringBootApi)
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", observability.OtelCollector.GetEndpoint(ResourceNames.OtlpGrpcEndpoint))
@@ -101,6 +104,7 @@ internal static class ApplicationComponentsExtensions
 
         var apiService = builder.AddProject<Projects.AspireApmBackendsDemo_ApiService>(ResourceNames.ApiService)
             .WithHttpEndpoint(name: ResourceNames.HttpEndpoint, isProxied: false)
+            .AllowInsecureHttpIngress()
             .WithEnvironment("OTEL_SERVICE_NAME", ResourceNames.ApiService)
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", observability.OtelCollector.GetEndpoint(ResourceNames.OtlpGrpcEndpoint))
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")
