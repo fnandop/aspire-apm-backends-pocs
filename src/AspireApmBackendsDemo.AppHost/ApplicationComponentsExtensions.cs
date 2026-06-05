@@ -12,6 +12,7 @@ internal static class ApplicationComponentsExtensions
         var (postgres, springApi) = builder.AddSpringBootApi(paths, observability);
 
         var gateway = builder.AddProject<Projects.AspireApmBackendsDemo_Gateway>(ResourceNames.Gateway)
+            .WithExternalHttpEndpoints()
             .WithHttpEndpoint(name: ResourceNames.HttpEndpoint, isProxied: false)
             .WithEnvironment("OTEL_SERVICE_NAME", ResourceNames.Gateway)
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", observability.OtelCollector.GetEndpoint(ResourceNames.OtlpGrpcEndpoint))
