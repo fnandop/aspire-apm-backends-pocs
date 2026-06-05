@@ -16,19 +16,28 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
-static string NormalizeAddress(string? address, string serviceName)
+static string GetServiceAddress(IConfiguration configuration, string serviceName, params string[] schemes)
 {
-    if (string.IsNullOrWhiteSpace(address))
+    foreach (var scheme in schemes)
     {
-        throw new InvalidOperationException($"Service discovery address for '{serviceName}' was not configured by Aspire.");
+        var address = configuration[$"services:{serviceName}:{scheme}:0"];
+        if (!string.IsNullOrWhiteSpace(address))
+        {
+            return NormalizeAddress(address);
+        }
     }
 
+    throw new InvalidOperationException($"Service discovery address for '{serviceName}' was not configured by Aspire.");
+}
+
+static string NormalizeAddress(string address)
+{
     return address.EndsWith('/') ? address : address + "/";
 }
 
-var dotnetApiAddress = NormalizeAddress(builder.Configuration["services:api-service:http:0"], "api-service");
-var nodeApiAddress = NormalizeAddress(builder.Configuration["services:node-api:http:0"], "node-api");
-var springApiAddress = NormalizeAddress(builder.Configuration["services:spring-boot-api:http:0"], "spring-boot-api");
+var dotnetApiAddress = GetServiceAddress(builder.Configuration, "api-service", "https", "http");
+var nodeApiAddress = GetServiceAddress(builder.Configuration, "node-api", "http", "https");
+var springApiAddress = GetServiceAddress(builder.Configuration, "spring-boot-api", "http", "https");
 
 var routes = new[]
 {
