@@ -13,7 +13,6 @@ internal static class ApplicationComponentsExtensions
 
         var gateway = builder.AddProject<Projects.AspireApmBackendsDemo_Gateway>(ResourceNames.Gateway)
             .WithExternalHttpEndpoints()
-            .WithHttpEndpoint(name: ResourceNames.HttpEndpoint, isProxied: false)
             .WithEnvironment("OTEL_SERVICE_NAME", ResourceNames.Gateway)
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", observability.OtelCollector.GetEndpoint(ResourceNames.OtlpGrpcEndpoint))
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")
