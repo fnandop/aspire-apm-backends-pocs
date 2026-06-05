@@ -1,6 +1,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.AddAzureContainerAppEnvironment(ResourceNames.ContainerAppEnvironment);
+builder.AddAzureContainerAppEnvironment(ResourceNames.ContainerAppEnvironment)
+    .WithHttpsUpgrade(false);
 
 var paths = AppHostPaths.FromAppHost();
 var observability = builder.AddObservability(paths);

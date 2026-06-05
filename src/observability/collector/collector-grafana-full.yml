@@ -29,7 +29,7 @@ exporters:
       service: api-service
 
   otlphttp/loki:
-    endpoint: ${env:LOKI_OTLP_ENDPOINT}
+    endpoint: ${env:LOKI_OTLP_ENDPOINT}/otlp
     tls:
       insecure: true
 

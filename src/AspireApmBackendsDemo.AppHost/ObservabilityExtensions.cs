@@ -179,7 +179,7 @@ internal static class ObservabilityExtensions
 
         observability.OtelCollector.WithEnvironment("TEMPO_OTLP_ENDPOINT", "tempo:4317");
 
-        builder.AddGrafana(paths);
+        builder.AddGrafana(paths, tempo.GetEndpoint("tempo-http"));
 
         observability.OtelCollector.WaitFor(tempo);
         application.ApiService.WaitFor(tempo);
@@ -206,9 +206,13 @@ internal static class ObservabilityExtensions
 
         observability.OtelCollector
             .WithEnvironment("TEMPO_OTLP_ENDPOINT", "tempo:4317")
-            .WithEnvironment("LOKI_OTLP_ENDPOINT", builder.ExecutionContext.IsPublishMode ? "https://loki/otlp" : "http://loki:3100/otlp");
+            .WithEnvironment("LOKI_OTLP_ENDPOINT", loki.GetEndpoint(ResourceNames.HttpEndpoint));
 
-        builder.AddGrafana(paths);
+        builder.AddGrafana(
+            paths,
+            tempo.GetEndpoint("tempo-http"),
+            prometheus.GetEndpoint(ResourceNames.HttpEndpoint),
+            loki.GetEndpoint(ResourceNames.HttpEndpoint));
 
         if (builder.ExecutionContext.IsRunMode)
         {
@@ -221,7 +225,12 @@ internal static class ObservabilityExtensions
         application.ApiService.WaitFor(tempo);
     }
 
-    private static IResourceBuilder<ContainerResource> AddGrafana(this IDistributedApplicationBuilder builder, AppHostPaths paths)
+    private static IResourceBuilder<ContainerResource> AddGrafana(
+        this IDistributedApplicationBuilder builder,
+        AppHostPaths paths,
+        EndpointReference tempoEndpoint,
+        EndpointReference? prometheusEndpoint = null,
+        EndpointReference? lokiEndpoint = null)
     {
         var grafana = builder.ExecutionContext.IsPublishMode
             ? builder.AddDockerfile("grafana", paths.ObservabilityDir, Path.Combine("docker", "grafana.Dockerfile"))
@@ -232,10 +241,20 @@ internal static class ObservabilityExtensions
             .WithEnvironment("GF_AUTH_ANONYMOUS_ENABLED", "true")
             .WithEnvironment("GF_AUTH_ANONYMOUS_ORG_ROLE", "Admin")
             .WithEnvironment("GF_AUTH_DISABLE_LOGIN_FORM", "true")
-            .WithEnvironment("TEMPO_URL", builder.ExecutionContext.IsPublishMode ? "https://tempo" : "http://tempo:3100")
-            .WithEnvironment("PROMETHEUS_URL", builder.ExecutionContext.IsPublishMode ? "https://prometheus" : "http://prometheus:9090")
-            .WithEnvironment("LOKI_URL", builder.ExecutionContext.IsPublishMode ? "https://loki" : "http://loki:3100")
+            .WithEnvironment("TEMPO_URL", tempoEndpoint)
+            .WithEnvironment("PROMETHEUS_URL", "http://prometheus:9090")
+            .WithEnvironment("LOKI_URL", "http://loki:3100")
             .WithExternalHttpEndpoints();
+
+        if (prometheusEndpoint is not null)
+        {
+            grafana.WithEnvironment("PROMETHEUS_URL", prometheusEndpoint);
+        }
+
+        if (lokiEndpoint is not null)
+        {
+            grafana.WithEnvironment("LOKI_URL", lokiEndpoint);
+        }
 
         if (builder.ExecutionContext.IsRunMode)
         {
