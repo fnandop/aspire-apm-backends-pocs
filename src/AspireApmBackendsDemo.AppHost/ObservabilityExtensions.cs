@@ -13,8 +13,8 @@ internal static class ObservabilityExtensions
             .WithHttpEndpoint(8889, name: "prometheus-metrics", isProxied: false)
             .AllowInsecureHttpIngress()
             .WithEnvironment("OBSERVABILITY_BACKEND", backend)
-            .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")
-            .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc");
+            .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4318")
+            .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
 
         if (builder.ExecutionContext.IsRunMode)
         {
@@ -183,7 +183,7 @@ internal static class ObservabilityExtensions
             tempo.WithBindMount(Path.Combine(paths.ObservabilityDir, "grafana", "tempo.yml"), "/etc/tempo.yaml", isReadOnly: true);
         }
 
-        observability.OtelCollector.WithEnvironment("TEMPO_OTLP_ENDPOINT", "tempo:4317");
+        observability.OtelCollector.WithEnvironment("TEMPO_OTLP_ENDPOINT", tempo.GetEndpoint("tempo-otlp-http"));
 
         builder.AddGrafana(paths, tempo.GetEndpoint("tempo-http"));
 
@@ -214,7 +214,7 @@ internal static class ObservabilityExtensions
             .WithArgs("-config.file=/etc/loki/local-config.yaml");
 
         observability.OtelCollector
-            .WithEnvironment("TEMPO_OTLP_ENDPOINT", "tempo:4317")
+            .WithEnvironment("TEMPO_OTLP_ENDPOINT", tempo.GetEndpoint("tempo-otlp-http"))
             .WithEnvironment("LOKI_OTLP_ENDPOINT", loki.GetEndpoint(ResourceNames.HttpEndpoint));
 
         builder.AddGrafana(

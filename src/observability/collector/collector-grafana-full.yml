@@ -17,7 +17,7 @@ exporters:
     sampling_initial: 5
     sampling_thereafter: 200
 
-  otlp/tempo:
+  otlp_http/tempo:
     endpoint: ${env:TEMPO_OTLP_ENDPOINT}
     tls:
       insecure: true
@@ -28,7 +28,7 @@ exporters:
     const_labels:
       service: api-service
 
-  otlphttp/loki:
+  otlp_http/loki:
     endpoint: ${env:LOKI_OTLP_ENDPOINT}/otlp
     tls:
       insecure: true
@@ -38,7 +38,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug, otlp/tempo]
+      exporters: [debug, otlp_http/tempo]
     metrics:
       receivers: [otlp]
       processors: [batch]
@@ -46,4 +46,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug, otlphttp/loki]
+      exporters: [debug, otlp_http/loki]
