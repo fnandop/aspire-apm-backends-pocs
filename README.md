@@ -248,6 +248,49 @@ $env:DD_SITE="datadoghq.com"
 
 Do not hardcode API keys. Use user secrets, environment variables, or your secret manager in production.
 
+## Deploy To Azure Container Apps
+
+Use the GitHub Actions workflow [deploy.yml](C:/Users/fnand/source/repos/oltp-options/.github/workflows/deploy.yml) to deploy the Aspire app to Azure Container Apps with a selected observability backend.
+
+1. In GitHub, open **Actions**.
+2. Select **Deploy Aspire Apm Backends Demo**.
+3. Click **Run workflow**.
+4. Choose `observability_backend`.
+5. Run the workflow.
+
+Supported `observability_backend` values:
+
+```text
+elastic
+appinsights
+datadog
+jaeger
+tempo
+grafana-full
+```
+
+The workflow sets `OBSERVABILITY_BACKEND` from that input, then runs:
+
+```bash
+aspire deploy \
+  --project src/AspireApmBackendsDemo.AppHost/AspireApmBackendsDemo.AppHost.csproj \
+  --non-interactive
+```
+
+Configure these GitHub repository variables before deploying:
+
+```text
+AZURE_CLIENT_ID
+AZURE_TENANT_ID
+AZURE_SUBSCRIPTION_ID
+AZURE_LOCATION
+AZURE_RESOURCE_GROUP
+APP_CONFIG_NAME
+KEY_VAULT_NAME
+```
+
+Backend-specific values are also required for some modes. For `appinsights`, provide `APPLICATIONINSIGHTS_CONNECTION_STRING`. For `datadog`, provide `DD_API_KEY` and optionally `DD_SITE`.
+
 ## Test Commands
 [![Small image / thumbnail](imgs/react-ui-test-custom-300x200.jpg)](imgs/react-ui-test.png)
 
